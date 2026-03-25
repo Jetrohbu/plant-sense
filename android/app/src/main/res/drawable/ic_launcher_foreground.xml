@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Stylized leaf shape (white) -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M44,72 C36,64 30,52 34,40 C38,28 48,24 54,22 C60,20 68,22 72,28 C76,34 74,44 70,52 C66,60 58,66 54,70 C50,74 46,74 44,72 Z" />
+
+    <!-- Leaf vein (center line, green) -->
+    <path
+        android:strokeColor="#FF4CAF50"
+        android:strokeWidth="1.5"
+        android:fillColor="#00000000"
+        android:pathData="M54,24 C52,36 50,48 48,60 C47,64 46,68 44,72" />
+
+    <!-- Leaf side veins -->
+    <path
+        android:strokeColor="#FF4CAF50"
+        android:strokeWidth="1"
+        android:fillColor="#00000000"
+        android:pathData="M52,34 L44,40 M51,42 L42,50 M50,50 L43,58" />
+
+    <!-- Water drop -->
+    <path
+        android:fillColor="#B3FFFFFF"
+        android:pathData="M38,76 C38,73 40,70 42,68 C44,70 46,73 46,76 C46,78 44,80 42,80 C40,80 38,78 38,76 Z" />
+
+    <!-- BLE signal arcs (3 arcs radiating from top-right of leaf) -->
+    <!-- Inner arc -->
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2"
+        android:fillColor="#00000000"
+        android:strokeLineCap="round"
+        android:pathData="M68,30 A8,8 0 0,1 68,46" />
+
+    <!-- Middle arc -->
+    <path
+        android:strokeColor="#CCFFFFFF"
+        android:strokeWidth="2"
+        android:fillColor="#00000000"
+        android:strokeLineCap="round"
+        android:pathData="M72,26 A13,13 0 0,1 72,52" />
+
+    <!-- Outer arc -->
+    <path
+        android:strokeColor="#99FFFFFF"
+        android:strokeWidth="2"
+        android:fillColor="#00000000"
+        android:strokeLineCap="round"
+        android:pathData="M76,22 A18,18 0 0,1 76,58" />
+
+</vector>
