@@ -6,6 +6,7 @@ import '../models/plant_profile.dart';
 import '../providers/sensor_provider.dart';
 import '../services/database_service.dart';
 import '../services/plant_api_service.dart';
+import '../widgets/ui_helpers.dart';
 import 'plant_profile_detail_screen.dart';
 
 class PlantSearchScreen extends StatefulWidget {
@@ -72,6 +73,7 @@ class _PlantSearchScreenState extends State<PlantSearchScreen>
       _localResults.sort((a, b) =>
           (a.scientificName ?? '').compareTo(b.scientificName ?? ''));
     }
+    if (!mounted) return;
     setState(() => _loadingLocal = false);
   }
 
@@ -98,6 +100,7 @@ class _PlantSearchScreenState extends State<PlantSearchScreen>
     }
 
     _apiResults = allResults;
+    if (!mounted) return;
     setState(() => _loadingApi = false);
   }
 
@@ -119,7 +122,7 @@ class _PlantSearchScreenState extends State<PlantSearchScreen>
       }
     }
 
-    final id = await _db.insertPlantProfile(toSave);
+    await _db.insertPlantProfile(toSave);
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -173,18 +176,7 @@ class _PlantSearchScreenState extends State<PlantSearchScreen>
         ),
       ),
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF4FC3F7),
-              Color(0xFF29B6F6),
-              Color(0xFF0288D1),
-              Color(0xFF01579B),
-            ],
-          ),
-        ),
+        decoration: appBackgroundGradient(context),
         child: SafeArea(
           child: Column(
             children: [

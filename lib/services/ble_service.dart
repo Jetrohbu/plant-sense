@@ -52,10 +52,6 @@ class BleService {
     _isScanning = false;
   }
 
-  /// Parrot Flower Power advertises this service UUID
-  static const String _parrotServiceUuid =
-      '39e1fa00-84a8-11e2-afba-0002a5d5c51b';
-
   /// Check if a scan result is a known plant sensor (by name or service UUID)
   static bool _isKnownSensor(ScanResult r) {
     final platformName = r.device.platformName.toLowerCase();

@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import '../models/plant_sensor.dart';
@@ -102,12 +101,6 @@ class SensorProvider extends ChangeNotifier {
 
   Future<void> loadApiProviders() async {
     _apiProviders = await _db.getAllApiProviders();
-  }
-
-  PlantApiService? _getApiService() {
-    final active = _apiProviders.where((p) => p.enabled).toList();
-    if (active.isEmpty) return null;
-    return PlantApiService.fromProvider(active.first);
   }
 
   List<PlantApiService> _getAllApiServices() {

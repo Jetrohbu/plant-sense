@@ -3,6 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../models/plant_sensor.dart';
 import '../models/sensor_reading.dart';
 import '../models/plant_profile.dart';
+import 'ui_helpers.dart';
 
 class PlantCard extends StatelessWidget {
   final PlantSensor sensor;
@@ -40,32 +41,41 @@ class PlantCard extends StatelessWidget {
             padding: const EdgeInsets.all(10),
             child: Row(
               children: [
-                // Plant photo - bigger like Parrot app
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: SizedBox(
-                    width: 72,
-                    height: 72,
-                    child: plantProfile?.imageUrl != null
-                        ? CachedNetworkImage(
-                            imageUrl: plantProfile!.imageUrl!,
-                            fit: BoxFit.cover,
-                            placeholder: (_, __) => Container(
+                // Plant photo with a status ring summarising health.
+                Container(
+                  padding: const EdgeInsets.all(2.5),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: statusDotColor(outOfRangeParams.length),
+                      width: 2.5,
+                    ),
+                  ),
+                  child: ClipOval(
+                    child: SizedBox(
+                      width: 64,
+                      height: 64,
+                      child: plantProfile?.imageUrl != null
+                          ? CachedNetworkImage(
+                              imageUrl: plantProfile!.imageUrl!,
+                              fit: BoxFit.cover,
+                              placeholder: (_, __) => Container(
+                                color: Colors.white.withValues(alpha: 0.2),
+                                child: const Icon(Icons.local_florist,
+                                    color: Colors.white70, size: 28),
+                              ),
+                              errorWidget: (_, __, ___) => Container(
+                                color: Colors.white.withValues(alpha: 0.2),
+                                child: const Icon(Icons.local_florist,
+                                    color: Colors.white70, size: 28),
+                              ),
+                            )
+                          : Container(
                               color: Colors.white.withValues(alpha: 0.2),
-                              child: const Icon(Icons.eco,
+                              child: Icon(_plantIcon(),
                                   color: Colors.white70, size: 28),
                             ),
-                            errorWidget: (_, __, ___) => Container(
-                              color: Colors.white.withValues(alpha: 0.2),
-                              child: const Icon(Icons.eco,
-                                  color: Colors.white70, size: 28),
-                            ),
-                          )
-                        : Container(
-                            color: Colors.white.withValues(alpha: 0.2),
-                            child: Icon(_plantIcon(),
-                                color: Colors.white70, size: 28),
-                          ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),

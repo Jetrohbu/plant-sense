@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/sensor_provider.dart';
+import '../widgets/ui_helpers.dart';
 import 'home_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -84,18 +85,7 @@ class _SplashScreenState extends State<SplashScreen>
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF4FC3F7),
-              Color(0xFF29B6F6),
-              Color(0xFF0288D1),
-              Color(0xFF01579B),
-            ],
-          ),
-        ),
+        decoration: appBackgroundGradient(context),
         child: SafeArea(
           child: AnimatedBuilder(
             animation: _fadeCtrl,

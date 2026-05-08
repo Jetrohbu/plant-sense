@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/api_provider.dart';
 import '../providers/sensor_provider.dart';
+import '../providers/theme_provider.dart';
 import '../services/log_service.dart';
 import 'log_screen.dart';
 
@@ -17,6 +18,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _showEditProviderDialog(
       BuildContext context, ApiProvider? existing) async {
+    final provider = context.read<SensorProvider>();
     final nameCtrl = TextEditingController(text: existing?.name ?? '');
     final urlCtrl = TextEditingController(text: existing?.baseUrl ?? '');
     final keyCtrl = TextEditingController(text: existing?.apiKey ?? '');
@@ -39,7 +41,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
-                  value: selectedType,
+                  initialValue: selectedType,
                   decoration: const InputDecoration(labelText: 'Type'),
                   items: const [
                     DropdownMenuItem(
@@ -83,7 +85,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
 
     if (result == true && mounted) {
-      final provider = context.read<SensorProvider>();
       if (existing != null) {
         await provider.updateApiProvider(existing.copyWith(
           name: nameCtrl.text.trim(),
@@ -104,6 +105,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _confirmDeleteProvider(
       BuildContext context, ApiProvider ap) async {
+    final provider = context.read<SensorProvider>();
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -123,7 +125,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
     if (confirm == true && mounted) {
-      await context.read<SensorProvider>().deleteApiProvider(ap.id!);
+      await provider.deleteApiProvider(ap.id!);
     }
   }
 
@@ -135,6 +137,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
       body: ListView(
         children: [
+          const _SectionHeader(title: 'Apparence'),
+          const _ThemeColorPicker(),
           const _SectionHeader(title: 'Données'),
           ListTile(
             leading: const Icon(Icons.storage),
@@ -159,6 +163,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: const Text('Purger les anciennes données'),
             subtitle: Text('Supprimer les données de plus de $_keepDays jours'),
             onTap: () async {
+              final provider = context.read<SensorProvider>();
+              final messenger = ScaffoldMessenger.of(context);
               final confirm = await showDialog<bool>(
                 context: context,
                 builder: (ctx) => AlertDialog(
@@ -181,11 +187,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               );
               if (confirm == true && mounted) {
-                await context
-                    .read<SensorProvider>()
-                    .purgeOldData(_keepDays);
+                await provider.purgeOldData(_keepDays);
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  messenger.showSnackBar(
                     const SnackBar(
                       content: Text('Données purgées'),
                       backgroundColor: Colors.green,
@@ -275,6 +279,76 @@ class _SectionHeader extends StatelessWidget {
           color: Theme.of(context).colorScheme.primary,
         ),
       ),
+    );
+  }
+}
+
+class _ThemeColorPicker extends StatelessWidget {
+  const _ThemeColorPicker();
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<ThemeProvider>(
+      builder: (context, theme, _) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: Row(
+                  children: [
+                    Icon(Icons.palette_outlined, size: 20),
+                    SizedBox(width: 12),
+                    Text(
+                      'Couleur du theme',
+                      style: TextStyle(fontSize: 15),
+                    ),
+                  ],
+                ),
+              ),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: ThemeProvider.presets.map((p) {
+                  final selected =
+                      p.color.toARGB32() == theme.seed.toARGB32();
+                  return InkWell(
+                    onTap: () => theme.setSeed(p.color),
+                    customBorder: const CircleBorder(),
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: p.color,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: selected
+                              ? Theme.of(context).colorScheme.onSurface
+                              : Colors.transparent,
+                          width: 3,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: p.color.withValues(alpha: 0.35),
+                            blurRadius: selected ? 10 : 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: selected
+                          ? const Icon(Icons.check,
+                              color: Colors.white, size: 20)
+                          : null,
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

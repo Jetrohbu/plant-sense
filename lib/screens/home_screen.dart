@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/sensor_provider.dart';
 import '../widgets/plant_card.dart';
+import '../widgets/ui_helpers.dart';
 import 'plant_detail_screen.dart';
 import 'plant_search_screen.dart';
 import 'scan_screen.dart';
@@ -18,9 +19,8 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() {
-      context.read<SensorProvider>().loadSensors();
-    });
+    final provider = context.read<SensorProvider>();
+    Future.microtask(provider.loadSensors);
   }
 
   @override
@@ -45,10 +45,10 @@ class _HomeScreenState extends State<HomeScreen> {
             builder: (context, provider, _) {
               if (provider.isRefreshingAll) {
                 return const Padding(
-                  padding: EdgeInsets.all(12),
+                  padding: EdgeInsets.all(14),
                   child: SizedBox(
-                    width: 24,
-                    height: 24,
+                    width: 22,
+                    height: 22,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
                       color: Colors.white,
@@ -56,16 +56,18 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 );
               }
-              return IconButton(
-                icon: const Icon(Icons.refresh, color: Colors.white),
+              return GlassIconButton(
+                icon: Icons.sync,
                 tooltip: 'Rafraichir tout',
+                iconColor: const Color(0xFF80D8FF),
                 onPressed: () => provider.refreshAll(),
               );
             },
           ),
-          IconButton(
-            icon: const Icon(Icons.eco, color: Colors.white),
+          GlassIconButton(
+            icon: Icons.local_florist,
             tooltip: 'Bibliotheque de plantes',
+            iconColor: const Color(0xFFA5D6A7),
             onPressed: () {
               Navigator.push(
                 context,
@@ -74,8 +76,10 @@ class _HomeScreenState extends State<HomeScreen> {
               );
             },
           ),
-          IconButton(
-            icon: const Icon(Icons.settings, color: Colors.white),
+          GlassIconButton(
+            icon: Icons.settings,
+            tooltip: 'Reglages',
+            iconColor: const Color(0xFFFFE082),
             onPressed: () {
               Navigator.push(
                 context,
@@ -84,44 +88,84 @@ class _HomeScreenState extends State<HomeScreen> {
               );
             },
           ),
+          const SizedBox(width: 4),
         ],
       ),
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF4FC3F7),
-              Color(0xFF29B6F6),
-              Color(0xFF0288D1),
-              Color(0xFF01579B),
-            ],
-          ),
-        ),
+        decoration: appBackgroundGradient(context),
         child: Consumer<SensorProvider>(
           builder: (context, provider, _) {
             if (provider.sensors.isEmpty) {
               return SafeArea(
                 child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.eco, size: 64,
-                          color: Colors.white.withValues(alpha: 0.6)),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'Aucun capteur',
-                        style: TextStyle(
-                            fontSize: 18, color: Colors.white),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Appuyez sur + pour scanner',
-                        style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.7)),
-                      ),
-                    ],
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 32),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 120,
+                          height: 120,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white.withValues(alpha: 0.12),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Icon(
+                            Icons.local_florist,
+                            size: 56,
+                            color: Colors.white.withValues(alpha: 0.85),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        const Text(
+                          'Aucune plante connectee',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Scanne un capteur Bluetooth pour suivre l\'humidite, la lumiere et la temperature de tes plantes.',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.75),
+                            fontSize: 14,
+                            height: 1.4,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 24),
+                        FilledButton.icon(
+                          onPressed: () async {
+                            final provider = context.read<SensorProvider>();
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => const ScanScreen()),
+                            );
+                            if (mounted) provider.loadSensors();
+                          },
+                          icon: const Icon(Icons.bluetooth_searching),
+                          label: const Text('Scanner un capteur'),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: const Color(0xFF0288D1),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 14),
+                            textStyle: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               );
@@ -210,13 +254,12 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
+          final provider = context.read<SensorProvider>();
           await Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const ScanScreen()),
           );
-          if (mounted) {
-            context.read<SensorProvider>().loadSensors();
-          }
+          if (mounted) provider.loadSensors();
         },
         backgroundColor: Colors.white,
         foregroundColor: const Color(0xFF0288D1),

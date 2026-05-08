@@ -347,7 +347,7 @@ class ParrotProtocol {
       // Fallback to firmware calibration if raw not available
       if (moistureFinal == null && moistureCalData != null) {
         moistureFinal = readFloat32LE(moistureCalData);
-        appLog('Parrot', 'Moisture from firmware FA09 (fallback): ${moistureFinal!.toStringAsFixed(1)}%');
+        appLog('Parrot', 'Moisture from firmware FA09 (fallback): ${moistureFinal.toStringAsFixed(1)}%');
       }
 
       // Light: try raw FA01 (instantaneous), fallback to FA0B (calibrated)
@@ -370,9 +370,9 @@ class ParrotProtocol {
             final voltage = rawLight * 3.3 / 2047.0;
             lightLux = pow(10, voltage * 1.5).toDouble();
             // Sanity cap at 200,000 lux (max possible sunlight)
-            if (lightLux! > 200000) lightLux = 200000;
+            if (lightLux > 200000) lightLux = 200000;
           }
-          appLog('Parrot', 'Light from raw: ${lightLux!.toStringAsFixed(1)} lux');
+          appLog('Parrot', 'Light from raw: ${lightLux.toStringAsFixed(1)} lux');
         }
       }
 
@@ -655,8 +655,6 @@ class ParrotProtocol {
   // Calibration diagnostics
   // ──────────────────────────────────────────────
 
-  static const String _calServiceUuid =
-      '39e1fe00-84a8-11e2-afba-0002a5d5c51b';
   static const String _calDataUuid =
       '39e1fe01-84a8-11e2-afba-0002a5d5c51b';
   static const String _friendlyNameUuid =
@@ -813,7 +811,7 @@ class ParrotProtocol {
         }
         if (calEaData != null && calEaData.length >= 4) {
           final cal = readFloat32LE(calEaData);
-          results['EA'] = '${cal.toStringAsFixed(3)}';
+          results['EA'] = cal.toStringAsFixed(3);
         }
 
         // Disable live mode

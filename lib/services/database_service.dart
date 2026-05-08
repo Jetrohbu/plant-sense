@@ -21,7 +21,7 @@ class DatabaseService {
 
     return await openDatabase(
       path,
-      version: 4,
+      version: 5,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -94,6 +94,21 @@ class DatabaseService {
         'enabled': 1,
         'type': 'trefle',
       });
+    }
+    if (oldVersion < 5) {
+      // Backfill new default plants without overwriting user-added ones.
+      // Match by scientific_name (unique enough across the seed list).
+      for (final plant in defaultPlants) {
+        final existing = await db.query(
+          'plant_profiles',
+          where: 'scientific_name = ?',
+          whereArgs: [plant.scientificName],
+          limit: 1,
+        );
+        if (existing.isEmpty) {
+          await db.insert('plant_profiles', plant.toMap());
+        }
+      }
     }
   }
 

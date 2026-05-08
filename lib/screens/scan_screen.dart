@@ -7,6 +7,7 @@ import '../models/plant_sensor.dart';
 import '../models/plant_profile.dart';
 import '../providers/sensor_provider.dart';
 import '../services/ble_service.dart';
+import '../widgets/ui_helpers.dart';
 import 'plant_search_screen.dart';
 
 class ScanScreen extends StatefulWidget {
@@ -233,18 +234,7 @@ class _ScanScreenState extends State<ScanScreen> {
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF4FC3F7),
-              Color(0xFF29B6F6),
-              Color(0xFF0288D1),
-              Color(0xFF01579B),
-            ],
-          ),
-        ),
+        decoration: appBackgroundGradient(context),
         child: SafeArea(
           child: Column(
             children: [

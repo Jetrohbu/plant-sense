@@ -195,7 +195,7 @@ class ParrotOadService {
         );
 
         if (result) {
-          disconnectSub?.cancel();
+          disconnectSub.cancel();
           onStatus?.call('Flash reussi! Redemarrage...');
           return true;
         }
@@ -204,7 +204,7 @@ class ParrotOadService {
         appLog('OAD', 'Transfert echoue, essai suivant...');
       }
 
-      disconnectSub?.cancel();
+      disconnectSub.cancel();
       await BleConnection.safeDisconnect(device);
       onStatus?.call('Le capteur refuse toutes les tentatives OAD');
       return false;
