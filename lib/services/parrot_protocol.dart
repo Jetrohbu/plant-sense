@@ -33,6 +33,28 @@ class ParrotProtocol {
   static const String ecPorousCalUuid =
       '39e1fa0e-84a8-11e2-afba-0002a5d5c51b';
 
+  // History service (39e1FC00) — offline measurement log on the sensor
+  static const String historyServiceUuid =
+      '39e1fc00-84a8-11e2-afba-0002a5d5c51b';
+  static const String historyNbEntriesUuid =
+      '39e1fc01-84a8-11e2-afba-0002a5d5c51b'; // U16 LE
+  static const String historyLastEntryUuid =
+      '39e1fc02-84a8-11e2-afba-0002a5d5c51b'; // U32 LE
+  static const String historyTransferStartUuid =
+      '39e1fc03-84a8-11e2-afba-0002a5d5c51b'; // U32 LE R/W
+  static const String historySessionIdUuid =
+      '39e1fc04-84a8-11e2-afba-0002a5d5c51b'; // U16 LE
+  static const String historySessionStartUuid =
+      '39e1fc05-84a8-11e2-afba-0002a5d5c51b'; // U32 LE
+  static const String historySessionPeriodUuid =
+      '39e1fc06-84a8-11e2-afba-0002a5d5c51b'; // U16 LE (seconds)
+
+  // Clock service (39e1FD00) — sensor's internal time
+  static const String clockServiceUuid =
+      '39e1fd00-84a8-11e2-afba-0002a5d5c51b';
+  static const String clockTimeUuid =
+      '39e1fd01-84a8-11e2-afba-0002a5d5c51b'; // U32 LE (seconds since boot)
+
   // Battery (standard BLE)
   static const String batteryUuid = '00002a19-0000-1000-8000-00805f9b34fb';
 
@@ -51,6 +73,15 @@ class ParrotProtocol {
   static int readUint16LE(List<int> data) {
     if (data.length < 2) return 0;
     return data[0] | (data[1] << 8);
+  }
+
+  /// Read uint32 little-endian from 4 bytes
+  static int readUint32LE(List<int> data) {
+    if (data.length < 4) return 0;
+    return data[0] |
+        (data[1] << 8) |
+        (data[2] << 16) |
+        (data[3] << 24);
   }
 
   /// Estimate soil temperature from NTC thermistor raw readings.
@@ -350,48 +381,29 @@ class ParrotProtocol {
         appLog('Parrot', 'Moisture from firmware FA09 (fallback): ${moistureFinal.toStringAsFixed(1)}%');
       }
 
-      // Light: try raw FA01 (instantaneous), fallback to FA0B (calibrated)
-      double? lightLux;
-
-      // FA01 raw: uint16, valid range 0-4095 (12-bit ADC)
-      // 0xFFFF = sensor not available / sentinel
+      // Light: we use FA0B (calibrated DLI in mol/m²/d) as the source of truth
+      // because firmware 2.x ("hawaii") often has FA01 unreliable (returns
+      // 0xFFFF or values outside the 0-4095 range that has no documented
+      // conversion). FA0B is well-specified by Parrot (page 25) and works
+      // consistently across sensors. FA01 is logged for diagnostic only.
       if (lightRawData != null && lightRawData.length >= 2) {
         final rawLight = readUint16LE(lightRawData);
-        appLog('Parrot', 'Light FA01 raw=$rawLight (0x${rawLight.toRadixString(16)})');
-        if (rawLight == 0xFFFF) {
-          // Sentinel value = photodiode HS, leave lightLux as null
-          appLog('Parrot', 'Light FA01 = 0xFFFF: capteur de lumiere HS');
-        } else if (rawLight <= 4095) {
-          // Parrot photodiode: voltage = raw * 3.3 / 2047
-          // lux ≈ 10^(voltage * 1.5)
-          if (rawLight == 0) {
-            lightLux = 0.0;
-          } else {
-            final voltage = rawLight * 3.3 / 2047.0;
-            lightLux = pow(10, voltage * 1.5).toDouble();
-            // Sanity cap at 200,000 lux (max possible sunlight)
-            if (lightLux > 200000) lightLux = 200000;
-          }
-          appLog('Parrot', 'Light from raw: ${lightLux.toStringAsFixed(1)} lux');
-        }
+        appLog('Parrot',
+            'Light FA01 raw=$rawLight (0x${rawLight.toRadixString(16)}) [diag only]');
       }
 
-      // Fallback: FA0B calibrated sunlight (PPFD µmol/m²/s)
-      // 1 µmol/m²/s ≈ 54 lux (sunlight spectrum)
-      // Skip fallback if raw was 0xFFFF (photodiode HS — calibrated value is garbage)
-      final lightSensorHS = lightRawData != null &&
-          lightRawData.length >= 2 &&
-          readUint16LE(lightRawData) == 0xFFFF;
-      if (lightLux == null && lightCalData != null && !lightSensorHS) {
+      double? dliMolPerM2PerDay;
+      if (lightCalData != null && lightCalData.length >= 4) {
         final calValue = readFloat32LE(lightCalData);
-        appLog('Parrot', 'Light FA0B cal=$calValue');
+        appLog('Parrot', 'Light FA0B (DLI) raw=$calValue');
         if (calValue.isFinite && calValue >= 0) {
-          lightLux = calValue * 54.0;
-          appLog('Parrot', 'Light from cal: ${lightLux.toStringAsFixed(1)} lux');
+          dliMolPerM2PerDay = calValue;
+          appLog('Parrot', 'DLI: ${calValue.toStringAsFixed(2)} mol/m2/d');
         }
       }
 
-      appLog('Parrot', 'airTempCal=$airTempCal moisture=$moistureFinal light=$lightLux lux');
+      appLog('Parrot',
+          'airTempCal=$airTempCal moisture=$moistureFinal dli=$dliMolPerM2PerDay mol/m2/d');
 
       // 6. Soil temperature from NTC thermistor
       double? soilTemp;
@@ -478,6 +490,87 @@ class ParrotProtocol {
         } catch (_) {}
       }
 
+      // 10. POC: read History service metadata (FC01-FC06) + clock (FD01)
+      // Just logging for now — no rapatriation yet.
+      try {
+        BluetoothService? historyService;
+        BluetoothService? clockService;
+        for (final s in services) {
+          final sid = _shortUuid(s.uuid.toString());
+          if (sid == _shortUuid(historyServiceUuid)) historyService = s;
+          if (sid == _shortUuid(clockServiceUuid)) clockService = s;
+        }
+
+        if (clockService != null) {
+          final clockData =
+              await _readCharSafe(clockService, clockTimeUuid);
+          if (clockData != null && clockData.length >= 4) {
+            final clockSeconds = readUint32LE(clockData);
+            final uptimeHours = (clockSeconds / 3600).toStringAsFixed(1);
+            final uptimeDays = (clockSeconds / 86400).toStringAsFixed(1);
+            appLog('Parrot',
+                'Clock FD01: $clockSeconds s = $uptimeHours h ($uptimeDays days uptime)');
+          }
+        }
+
+        if (historyService != null) {
+          final nbEntriesData =
+              await _readCharSafe(historyService, historyNbEntriesUuid);
+          final lastEntryData =
+              await _readCharSafe(historyService, historyLastEntryUuid);
+          final sessionIdData =
+              await _readCharSafe(historyService, historySessionIdUuid);
+          final sessionStartData =
+              await _readCharSafe(historyService, historySessionStartUuid);
+          final sessionPeriodData =
+              await _readCharSafe(historyService, historySessionPeriodUuid);
+
+          final nbEntries =
+              nbEntriesData != null && nbEntriesData.length >= 2
+                  ? readUint16LE(nbEntriesData)
+                  : null;
+          final lastEntry =
+              lastEntryData != null && lastEntryData.length >= 4
+                  ? readUint32LE(lastEntryData)
+                  : null;
+          final sessionId =
+              sessionIdData != null && sessionIdData.length >= 2
+                  ? readUint16LE(sessionIdData)
+                  : null;
+          final sessionStart =
+              sessionStartData != null && sessionStartData.length >= 4
+                  ? readUint32LE(sessionStartData)
+                  : null;
+          final sessionPeriod =
+              sessionPeriodData != null && sessionPeriodData.length >= 2
+                  ? readUint16LE(sessionPeriodData)
+                  : null;
+
+          appLog('Parrot',
+              'History meta: nbEntries=$nbEntries lastEntry=$lastEntry sessionId=$sessionId sessionStart=$sessionStart period=${sessionPeriod}s');
+
+          // Compute first-available index per spec section 4.3:
+          // firstEntryIdx = lastEntry - nbEntries + 1
+          if (nbEntries != null && lastEntry != null && nbEntries > 0) {
+            final firstEntry = lastEntry - nbEntries + 1;
+            final coverageSec =
+                sessionPeriod != null ? nbEntries * sessionPeriod : null;
+            final coverageHours = coverageSec != null
+                ? (coverageSec / 3600).toStringAsFixed(1)
+                : '?';
+            final coverageDays = coverageSec != null
+                ? (coverageSec / 86400).toStringAsFixed(1)
+                : '?';
+            appLog('Parrot',
+                'History coverage: entries [$firstEntry..$lastEntry] = $nbEntries samples = $coverageHours h ($coverageDays days)');
+          }
+        } else {
+          appLog('Parrot', '⚠ History service FC00 non trouvé');
+        }
+      } catch (e) {
+        appLog('Parrot', '⚠ Erreur lecture history meta: $e');
+      }
+
       await BleConnection.safeDisconnect(device);
 
       return SensorReading(
@@ -485,7 +578,7 @@ class ParrotProtocol {
         temperature: airTempCal,
         soilTemperature: soilTemp,
         moisture: moistureFinal,
-        light: lightLux,
+        light: dliMolPerM2PerDay,
         conductivity: conductivity,
         battery: batteryLevel,
       );

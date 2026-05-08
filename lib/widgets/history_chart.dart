@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/sensor_reading.dart';
 
-enum ChartMetric { temperature, moisture, light, conductivity }
+enum ChartMetric { temperature, soilTemperature, moisture, light, conductivity }
 
 class HistoryChart extends StatelessWidget {
   final List<SensorReading> readings;
@@ -19,11 +19,13 @@ class HistoryChart extends StatelessWidget {
   String get _title {
     switch (metric) {
       case ChartMetric.temperature:
-        return 'Température (°C)';
+        return 'Température air (°C)';
+      case ChartMetric.soilTemperature:
+        return 'Température sol (°C)';
       case ChartMetric.moisture:
         return 'Humidité (%)';
       case ChartMetric.light:
-        return 'Lumière (lux)';
+        return 'Lumière DLI (mol/m²/d)';
       case ChartMetric.conductivity:
         return 'Conductivité (µS/cm)';
     }
@@ -33,6 +35,8 @@ class HistoryChart extends StatelessWidget {
     switch (metric) {
       case ChartMetric.temperature:
         return Colors.deepOrange;
+      case ChartMetric.soilTemperature:
+        return Colors.brown;
       case ChartMetric.moisture:
         return Colors.blue;
       case ChartMetric.light:
@@ -46,6 +50,8 @@ class HistoryChart extends StatelessWidget {
     switch (metric) {
       case ChartMetric.temperature:
         return r.temperature;
+      case ChartMetric.soilTemperature:
+        return r.soilTemperature;
       case ChartMetric.moisture:
         return r.moisture;
       case ChartMetric.light:
@@ -59,13 +65,13 @@ class HistoryChart extends StatelessWidget {
   String _formatValue(double value) {
     switch (metric) {
       case ChartMetric.temperature:
+      case ChartMetric.soilTemperature:
         return '${value.toStringAsFixed(1)}°';
       case ChartMetric.moisture:
         return '${value.toStringAsFixed(1)}%';
       case ChartMetric.light:
-        if (value >= 10000) return '${(value / 1000).toStringAsFixed(0)}k';
-        if (value >= 1000) return '${(value / 1000).toStringAsFixed(1)}k';
-        return value.toStringAsFixed(0);
+        // DLI typical range 0-50 mol/m²/d
+        return value.toStringAsFixed(value >= 10 ? 0 : 1);
       case ChartMetric.conductivity:
         if (value >= 1000) return '${(value / 1000).toStringAsFixed(1)}k';
         return value.toStringAsFixed(0);
@@ -142,11 +148,8 @@ class HistoryChart extends StatelessWidget {
       maxY += interval;
     }
 
-    // Reserved size for left labels — wider for large numbers
-    final reservedSize = metric == ChartMetric.light ||
-            metric == ChartMetric.conductivity
-        ? 48.0
-        : 44.0;
+    // Reserved size for left labels — wider for large numbers (conductivity)
+    final reservedSize = metric == ChartMetric.conductivity ? 48.0 : 44.0;
 
     // Time interval for X-axis
     final timeInterval = _getTimeInterval(spots);

@@ -23,7 +23,7 @@ class PlantDetailScreen extends StatefulWidget {
 
 class _PlantDetailScreenState extends State<PlantDetailScreen> {
   int _selectedPeriodIndex = 1;
-  int _selectedTab = 0; // 0=moisture, 1=light, 2=temp, 3=conductivity
+  int _selectedTab = 0; // 0=moisture, 1=light(DLI), 2=airTemp, 3=soilTemp, 4=conductivity
 
   static String _shortFirmware(String fw) {
     final match = RegExp(r'(\d+\.\d+\.\d+)').firstMatch(fw);
@@ -194,11 +194,14 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
     final tabs = [
       _MetricTab(Icons.water_drop, 'Humidite', 0, reading?.moisture != null
           ? '${reading!.moisture!.toStringAsFixed(0)}%' : '--'),
-      _MetricTab(Icons.light_mode, 'Lumiere', 1, reading?.light != null
-          ? reading!.light!.toStringAsFixed(0) : '--'),
-      _MetricTab(Icons.thermostat, 'Temp.', 2, reading?.temperature != null
+      _MetricTab(Icons.light_mode, 'DLI', 1, reading?.light != null
+          ? reading!.light!.toStringAsFixed(reading.light! >= 10 ? 0 : 1)
+          : '--'),
+      _MetricTab(Icons.wb_sunny_outlined, 'Air', 2, reading?.temperature != null
           ? '${reading!.temperature!.toStringAsFixed(1)}°' : '--'),
-      _MetricTab(Icons.electric_bolt, 'Engrais', 3, reading?.conductivity != null
+      _MetricTab(Icons.grass, 'Sol', 3, reading?.soilTemperature != null
+          ? '${reading!.soilTemperature!.toStringAsFixed(1)}°' : '--'),
+      _MetricTab(Icons.electric_bolt, 'Engrais', 4, reading?.conductivity != null
           ? reading!.conductivity!.toStringAsFixed(0) : '--'),
     ];
 
@@ -357,34 +360,45 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
     switch (_selectedTab) {
       case 0: // Moisture - pot visualization
         return WaterPotWidget(moisturePercent: reading.moisture);
-      case 1: // Light
+      case 1: // Light (DLI)
         return _buildMetricDisplay(
           value: reading.light,
-          unit: reading.light != null ? 'lux' : '',
+          unit: reading.light != null ? 'mol/m²/d' : '',
           label: reading.light != null
-              ? 'Luminosite'
-              : 'Capteur de lumiere HS',
+              ? 'Lumière (DLI)'
+              : 'Pas de lecture lumière',
           icon: Icons.light_mode,
           min: profile?.lightMin,
           max: profile?.lightMax,
           color: const Color(0xFFFFC107),
         );
-      case 2: // Temperature
+      case 2: // Air temperature
         return _buildMetricDisplay(
           value: reading.temperature,
           unit: '°C',
-          label: 'Temperature',
-          icon: Icons.thermostat,
+          label: 'Température air',
+          icon: Icons.wb_sunny_outlined,
           min: profile?.temperatureMin,
           max: profile?.temperatureMax,
           color: const Color(0xFFFF5722),
-          soilTemp: reading.soilTemperature,
         );
-      case 3: // Conductivity
+      case 3: // Soil temperature
+        return _buildMetricDisplay(
+          value: reading.soilTemperature,
+          unit: reading.soilTemperature != null ? '°C' : '',
+          label: reading.soilTemperature != null
+              ? 'Température sol'
+              : 'Plantez le capteur pour mesurer',
+          icon: Icons.grass,
+          min: profile?.temperatureMin,
+          max: profile?.temperatureMax,
+          color: const Color(0xFF8D6E63),
+        );
+      case 4: // Conductivity
         return _buildMetricDisplay(
           value: reading.conductivity,
-          unit: 'uS/cm',
-          label: 'Conductivite',
+          unit: 'µS/cm',
+          label: 'Conductivité (engrais)',
           icon: Icons.electric_bolt,
           min: profile?.conductivityMin,
           max: profile?.conductivityMax,
@@ -392,6 +406,23 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
         );
       default:
         return const SizedBox.shrink();
+    }
+  }
+
+  ChartMetric _selectedChartMetric() {
+    switch (_selectedTab) {
+      case 0:
+        return ChartMetric.moisture;
+      case 1:
+        return ChartMetric.light;
+      case 2:
+        return ChartMetric.temperature;
+      case 3:
+        return ChartMetric.soilTemperature;
+      case 4:
+        return ChartMetric.conductivity;
+      default:
+        return ChartMetric.moisture;
     }
   }
 
@@ -530,25 +561,21 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                 child: CircularProgressIndicator(color: Colors.white)),
           )
         else ...[
-          // Show chart based on selected tab
-          _buildChartCard(
-            _selectedTab == 0
-                ? ChartMetric.moisture
-                : _selectedTab == 1
-                    ? ChartMetric.light
-                    : _selectedTab == 2
-                        ? ChartMetric.temperature
-                        : ChartMetric.conductivity,
-          ),
+          // Show selected metric chart first, then the other 4
+          _buildChartCard(_selectedChartMetric()),
           const SizedBox(height: 12),
-          // Also show other charts
-          if (_selectedTab != 0) _buildChartCard(ChartMetric.moisture),
-          if (_selectedTab != 0) const SizedBox(height: 12),
-          if (_selectedTab != 2) _buildChartCard(ChartMetric.temperature),
-          if (_selectedTab != 2) const SizedBox(height: 12),
-          if (_selectedTab != 1) _buildChartCard(ChartMetric.light),
-          if (_selectedTab != 1) const SizedBox(height: 12),
-          if (_selectedTab != 3) _buildChartCard(ChartMetric.conductivity),
+          for (final m in [
+            ChartMetric.moisture,
+            ChartMetric.light,
+            ChartMetric.temperature,
+            ChartMetric.soilTemperature,
+            ChartMetric.conductivity,
+          ]) ...[
+            if (m != _selectedChartMetric()) ...[
+              _buildChartCard(m),
+              const SizedBox(height: 12),
+            ],
+          ],
         ],
       ],
     );
